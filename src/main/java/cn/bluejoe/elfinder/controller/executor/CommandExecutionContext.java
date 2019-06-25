@@ -5,14 +5,18 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import cn.bluejoe.elfinder.service.FsServiceFactory;
+import org.semanticwb.servlet.internal.DistributorParams;
 
-public interface CommandExecutionContext
-{
-	FsServiceFactory getFsServiceFactory();
+public interface CommandExecutionContext {
 
-	HttpServletRequest getRequest();
+    FsServiceFactory getFsServiceFactory();
 
-	HttpServletResponse getResponse();
+    HttpServletRequest getRequest();
 
-	ServletContext getServletContext();
+    HttpServletResponse getResponse();
+
+    ServletContext getServletContext();
+
+    DistributorParams getDistributorParams();
+    
 }

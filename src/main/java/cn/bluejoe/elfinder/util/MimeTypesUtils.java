@@ -6,69 +6,62 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
+import org.semanticwb.SWBPortal;
 
-import org.springframework.core.io.ClassPathResource;
+//import org.springframework.core.io.ClassPathResource;
+public abstract class MimeTypesUtils {
 
-public abstract class MimeTypesUtils
-{
-	private static Map<String, String> _map;
+    private static Map<String, String> _map;
 
-	public static final String UNKNOWN_MIME_TYPE = "application/oct-stream";
+    public static final String UNKNOWN_MIME_TYPE = "application/oct-stream";
 
-	static
-	{
-		_map = new HashMap<String, String>();
-		try
-		{
-			load();
-		}
-		catch (Throwable e)
-		{
-			e.printStackTrace();
-		}
-	}
+    static {
+        _map = new HashMap<String, String>();
+        try {
+            load();
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
 
-	public static String getMimeType(String ext)
-	{
-		return _map.get(ext.toLowerCase());
-	}
+    public static String getMimeType(String ext) {
+        return _map.get(ext.toLowerCase());
+    }
 
-	public static boolean isUnknownType(String mime)
-	{
-		return mime == null || UNKNOWN_MIME_TYPE.equals(mime);
-	}
+    public static boolean isUnknownType(String mime) {
+        return mime == null || UNKNOWN_MIME_TYPE.equals(mime);
+    }
 
-	private static void load() throws IOException
-	{
-		InputStream is = new ClassPathResource("/mime.types").getInputStream();
-		BufferedReader fr = new BufferedReader(new InputStreamReader(is));
-		String line;
-		while ((line = fr.readLine()) != null)
-		{
-			line = line.trim();
-			if (line.startsWith("#") || line.isEmpty())
-			{
-				continue;
-			}
+    private static void load() throws IOException {
+        
+        //InputStream is = new FileInputStream("/swbadmin/js/elfinder/mime.types");   //.getInputStream();
+        InputStream is = SWBPortal.getAdminFileStream("/swbadmin/js/elfinder/mime.types");
+        BufferedReader fr = new BufferedReader(new InputStreamReader(is));
+        String line;
+        while ((line = fr.readLine()) != null) {
+            line = line.trim();
+            if (line.startsWith("#") || line.isEmpty()) {
+                continue;
+            }
 
-			String[] tokens = line.split("\\s+");
-			if (tokens.length < 2)
-				continue;
+            String[] tokens = line.split("\\s+");
+            if (tokens.length < 2) {
+                continue;
+            }
 
-			for (int i = 1; i < tokens.length; i++)
-			{
-				putMimeType(tokens[i], tokens[0]);
-			}
-		}
+            for (int i = 1; i < tokens.length; i++) {
+                putMimeType(tokens[i], tokens[0]);
+            }
+        }
 
-		is.close();
-	}
+        is.close();
+    }
 
-	public static void putMimeType(String ext, String type)
-	{
-		if (ext == null || type == null)
-			return;
+    public static void putMimeType(String ext, String type) {
+        if (ext == null || type == null) {
+            return;
+        }
 
-		_map.put(ext.toLowerCase(), type);
-	}
+        _map.put(ext.toLowerCase(), type);
+    }
 }

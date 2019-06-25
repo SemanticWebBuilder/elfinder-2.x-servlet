@@ -8,8 +8,7 @@ import cn.bluejoe.elfinder.service.FsService;
 
 public abstract class FsServiceUtils
 {
-	public static FsItemEx findItem(FsService fsService, String hash)
-			throws IOException
+	public static FsItemEx findItem(FsService fsService, String hash) throws IOException
 	{
 		FsItem fsi = fsService.fromHash(hash);
 		if (fsi == null)

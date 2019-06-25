@@ -14,12 +14,11 @@ import cn.bluejoe.elfinder.controller.executor.CommandExecutor;
 import cn.bluejoe.elfinder.controller.executor.FsItemEx;
 import cn.bluejoe.elfinder.service.FsService;
 
-public class DuplicateCommandExecutor extends AbstractJsonCommandExecutor
-		implements CommandExecutor
+public class DuplicateCommandExecutor extends AbstractJsonCommandExecutor implements CommandExecutor
 {
 	@Override
-	public void execute(FsService fsService, HttpServletRequest request,
-			ServletContext servletContext, JSONObject json) throws Exception
+	public void execute(FsService fsService, HttpServletRequest request, ServletContext servletContext, JSONObject json)
+			throws Exception
 	{
 		String[] targets = request.getParameterValues("targets[]");
 
@@ -38,9 +37,8 @@ public class DuplicateCommandExecutor extends AbstractJsonCommandExecutor
 
 			while (true)
 			{
-				String newName = String.format("%s(%d)%s", baseName, i,
-						(extension == null || extension.isEmpty() ? "" : "."
-								+ extension));
+				String newName = String.format("%s(%d)%s", baseName, i, (extension == null || extension.isEmpty() ? ""
+						: "." + extension));
 				newFile = new FsItemEx(fsi.getParent(), newName);
 				if (!newFile.exists())
 				{

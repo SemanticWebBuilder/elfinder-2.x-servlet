@@ -14,7 +14,6 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -52,6 +51,8 @@ public class LocalFsVolume implements FsVolume
 	String _name;
 
 	File _rootDir;
+        
+        long _lastAccess;
 
 	private File asFile(FsItem fsi)
 	{
@@ -98,13 +99,6 @@ public class LocalFsVolume implements FsVolume
 
 	private LocalFsItem fromFile(File file)
 	{
-		if (!file.getAbsolutePath().startsWith(_rootDir.getAbsolutePath()))
-		{
-			String message = String.format(
-					"Item (%s) can't be outside the root directory (%s)",
-					file.getAbsolutePath(), _rootDir.getAbsolutePath());
-			throw new IllegalArgumentException(message);
-		}
 		return new LocalFsItem(this, file);
 	}
 
@@ -125,6 +119,10 @@ public class LocalFsVolume implements FsVolume
 	{
 		return asFile(fsi).lastModified();
 	}
+        
+        public long getLastAccess() {
+            return this._lastAccess;
+        }
 
 	@Override
 	public String getMimeType(FsItem fsi)
@@ -212,12 +210,6 @@ public class LocalFsVolume implements FsVolume
 	}
 
 	@Override
-	public void filterOptions(FsItem f, Map<String, Object> map)
-	{
-		// Don't do anything
-	}
-
-	@Override
 	public boolean hasChildFolder(FsItem fsi)
 	{
 		return asFile(fsi).isDirectory()
@@ -239,9 +231,9 @@ public class LocalFsVolume implements FsVolume
 	}
 
 	@Override
-	public boolean isRoot(FsItem fsi)
-	{
-		return _rootDir.equals(asFile(fsi));
+	public boolean isRoot(FsItem fsi) {
+            //antes: _rootDir == asFile(fsi)
+            return _rootDir.getAbsoluteFile().equals(asFile(fsi).getAbsoluteFile());
 	}
 
 	@Override
@@ -274,6 +266,10 @@ public class LocalFsVolume implements FsVolume
 		asFile(src).renameTo(asFile(dst));
 	}
 
+        public void setLastAccess(long timeInMillis) {
+            this._lastAccess = timeInMillis;
+        }
+        
 	public void setName(String name)
 	{
 		_name = name;

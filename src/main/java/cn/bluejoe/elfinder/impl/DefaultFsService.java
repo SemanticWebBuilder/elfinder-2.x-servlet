@@ -106,7 +106,7 @@ public class DefaultFsService implements FsService
 					localHash = localHash.replace(pair[1], pair[0]);
 				}
 
-				String relativePath = new String(Base64.decodeBase64(localHash));
+				String relativePath = new String(Base64.decodeBase64(localHash.getBytes()));
 				return v.fromPath(relativePath);
 			}
 		}
@@ -128,6 +128,10 @@ public class DefaultFsService implements FsService
 		return getVolumeId(item.getVolume()) + "_" + base;
 	}
 
+        public FsVolume getVolume(String volumeName) {
+            return _volumeMap.get(volumeName);
+        }
+        
 	public FsSecurityChecker getSecurityChecker()
 	{
 		return _securityChecker;
@@ -149,6 +153,10 @@ public class DefaultFsService implements FsService
 
 		return null;
 	}
+        
+        public boolean hasVolumeName(String volumeName) {
+            return _volumeMap.containsKey(volumeName);
+        }
 
 	public Map<String, FsVolume> getVolumeMap()
 	{
@@ -160,6 +168,15 @@ public class DefaultFsService implements FsService
 		return _volumeMap.values().toArray(new FsVolume[0]);
 	}
 
+        public boolean removeVolume(String volumeName) {
+            boolean volumeRemoved = false;
+            FsVolume removed = _volumeMap.remove(volumeName);
+            if (null != removed) {
+                volumeRemoved = true;
+            }
+            return volumeRemoved;
+        }
+        
 	public void setSecurityChecker(FsSecurityChecker securityChecker)
 	{
 		_securityChecker = securityChecker;

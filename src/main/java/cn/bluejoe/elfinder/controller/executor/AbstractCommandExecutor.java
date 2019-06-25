@@ -1,9 +1,9 @@
 package cn.bluejoe.elfinder.controller.executor;
 
+import cn.bluejoe.elfinder.impl.DefaultFsService;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -13,211 +13,182 @@ import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.log4j.Logger;
-
 import cn.bluejoe.elfinder.service.FsItemFilter;
 import cn.bluejoe.elfinder.service.FsService;
+import cn.bluejoe.elfinder.service.FsVolume;
+import cn.bluejoe.elfinder.servlet.SWBConnectorServlet;
 import cn.bluejoe.elfinder.util.FsItemFilterUtils;
 import cn.bluejoe.elfinder.util.FsServiceUtils;
+import org.apache.log4j.Logger;
+import org.semanticwb.servlet.internal.DistributorParams;
 
-public abstract class AbstractCommandExecutor implements CommandExecutor
-{
-	protected static Logger LOG = Logger
-			.getLogger(AbstractCommandExecutor.class);
+public abstract class AbstractCommandExecutor implements CommandExecutor {
 
-	protected FsItemFilter getRequestedFilter(HttpServletRequest request)
-	{
-		String[] onlyMimes = request.getParameterValues("mimes[]");
-		if (onlyMimes == null)
-			return FsItemFilterUtils.FILTER_ALL;
+    protected static Logger LOG = Logger.getLogger(AbstractCommandExecutor.class);
 
-		return FsItemFilterUtils.createMimeFilter(onlyMimes);
-	}
+    protected FsItemFilter getRequestedFilter(HttpServletRequest request) {
+        String[] onlyMimes = request.getParameterValues("mimes[]");
+        if (onlyMimes == null) {
+            return FsItemFilterUtils.FILTER_ALL;
+        }
 
-	protected void addChildren(Map<String, FsItemEx> map, FsItemEx fsi,
-			String[] mimeFilters) throws IOException
-	{
-		FsItemFilter filter = FsItemFilterUtils.createMimeFilter(mimeFilters);
-		addChildren(map, fsi, filter);
-	}
+        return FsItemFilterUtils.createMimeFilter(onlyMimes);
+    }
 
-	private void addChildren(Map<String, FsItemEx> map, FsItemEx fsi,
-			FsItemFilter filter) throws IOException
-	{
-		for (FsItemEx f : fsi.listChildren(filter))
-		{
-			map.put(f.getHash(), f);
-		}
-	}
+    protected void addChildren(Map<String, FsItemEx> map, FsItemEx fsi,
+            String[] mimeFilters) throws IOException {
+        FsItemFilter filter = FsItemFilterUtils.createMimeFilter(mimeFilters);
+        addChildren(map, fsi, filter);
+    }
 
-	protected void addSubfolders(Map<String, FsItemEx> map, FsItemEx fsi)
-			throws IOException
-	{
-		addChildren(map, fsi, FsItemFilterUtils.FILTER_FOLDER);
-	}
+    private void addChildren(Map<String, FsItemEx> map, FsItemEx fsi,
+            FsItemFilter filter) throws IOException {
+        for (FsItemEx f : fsi.listChildren(filter)) {
+            map.put(f.getHash(), f);
+        }
+    }
 
-	protected void createAndCopy(FsItemEx src, FsItemEx dst) throws IOException
-	{
-		if (src.isFolder())
-		{
-			createAndCopyFolder(src, dst);
-		}
-		else
-		{
-			createAndCopyFile(src, dst);
-		}
-	}
+    protected void addSubfolders(Map<String, FsItemEx> map, FsItemEx fsi)
+            throws IOException {
+        addChildren(map, fsi, FsItemFilterUtils.FILTER_FOLDER);
+    }
 
-	protected void createAndCopyFile(FsItemEx src, FsItemEx dst)
-			throws IOException
-	{
-		dst.createFile();
-		InputStream is = src.openInputStream();
-		dst.writeStream(is);
-	}
+    protected void createAndCopy(FsItemEx src, FsItemEx dst) throws IOException {
+        if (src.isFolder()) {
+            createAndCopyFolder(src, dst);
+        } else {
+            createAndCopyFile(src, dst);
+        }
+    }
 
-	protected void createAndCopyFolder(FsItemEx src, FsItemEx dst)
-			throws IOException
-	{
-		dst.createFolder();
+    protected void createAndCopyFile(FsItemEx src, FsItemEx dst)
+            throws IOException {
+        dst.createFile();
+        InputStream is = src.openInputStream();
+        dst.writeStream(is);
+    }
 
-		for (FsItemEx c : src.listChildren())
-		{
-			if (c.isFolder())
-			{
-				createAndCopyFolder(c, new FsItemEx(dst, c.getName()));
-			}
-			else
-			{
-				createAndCopyFile(c, new FsItemEx(dst, c.getName()));
-			}
-		}
-	}
+    protected void createAndCopyFolder(FsItemEx src, FsItemEx dst)
+            throws IOException {
+        dst.createFolder();
 
-	@Override
-	public void execute(CommandExecutionContext ctx) throws Exception
-	{
-		FsService fileService = ctx.getFsServiceFactory().getFileService(
-				ctx.getRequest(), ctx.getServletContext());
-		execute(fileService, ctx.getRequest(), ctx.getResponse(),
-				ctx.getServletContext());
-	}
+        for (FsItemEx c : src.listChildren()) {
+            if (c.isFolder()) {
+                createAndCopyFolder(c, new FsItemEx(dst, c.getName()));
+            } else {
+                createAndCopyFile(c, new FsItemEx(dst, c.getName()));
+            }
+        }
+    }
 
-	public abstract void execute(FsService fsService,
-			HttpServletRequest request, HttpServletResponse response,
-			ServletContext servletContext) throws Exception;
+    @Override
+    public void execute(CommandExecutionContext ctx) throws Exception {
+        FsService fileService = ctx.getFsServiceFactory().getFileService(
+                ctx.getRequest(), ctx.getServletContext());
+        execute(fileService, ctx.getRequest(), ctx.getResponse(),
+                ctx.getServletContext(), ctx.getDistributorParams());
+    }
 
-	protected Object[] files2JsonArray(HttpServletRequest request,
-			Collection<FsItemEx> list) throws IOException
-	{
-		return files2JsonArray(request, list.toArray(new FsItemEx[0]));
-	}
+    public abstract void execute(FsService fsService, HttpServletRequest request,
+            HttpServletResponse response, ServletContext servletContext,
+            DistributorParams distParams) throws Exception;
 
-	protected Object[] files2JsonArray(HttpServletRequest request,
-			FsItemEx[] list) throws IOException
-	{
-		List<Map<String, Object>> los = new ArrayList<Map<String, Object>>();
-		for (FsItemEx fi : list)
-		{
-			los.add(getFsItemInfo(request, fi));
-		}
+    protected Object[] files2JsonArray(HttpServletRequest request,
+            Collection<FsItemEx> list) throws IOException {
+        return files2JsonArray(request, list.toArray(new FsItemEx[0]));
+    }
 
-		return los.toArray();
-	}
+    protected Object[] files2JsonArray(HttpServletRequest request,
+            FsItemEx[] list) throws IOException {
+        List<Map<String, Object>> los = new ArrayList<Map<String, Object>>();
+        for (FsItemEx fi : list) {
+            los.add(getFsItemInfo(request, fi));
+        }
 
-	protected FsItemEx findCwd(FsService fsService, String target)
-			throws IOException
-	{
-		// current selected directory
-		FsItemEx cwd = null;
-		if (target != null)
-		{
-			cwd = findItem(fsService, target);
-		}
+        return los.toArray();
+    }
 
-		if (cwd == null)
-			cwd = new FsItemEx(fsService.getVolumes()[0].getRoot(), fsService);
+    protected FsItemEx findCwd(FsService fsService, FsVolume v, String target)
+            throws IOException {
+        // current selected directory
+        FsItemEx cwd = null;
+        if (target != null) {
+            cwd = findItem(fsService, target);
+        }
+        
+        if (v == null) {
+            v = fsService.getVolumes()[0];
+        }
 
-		return cwd;
-	}
+        if (cwd == null) {
+            cwd = new FsItemEx(v.getRoot(), fsService);
+        }
 
-	protected FsItemEx findItem(FsService fsService, String hash)
-			throws IOException
-	{
-		return FsServiceUtils.findItem(fsService, hash);
-	}
+        return cwd;
+    }
 
-	protected Map<String, Object> getFsItemInfo(HttpServletRequest request,
-			FsItemEx fsi) throws IOException
-	{
-		Map<String, Object> info = new HashMap<String, Object>();
-		info.put("hash", fsi.getHash());
-		info.put("mime", fsi.getMimeType());
-		info.put("ts", fsi.getLastModified());
-		info.put("size", fsi.getSize());
-		info.put("read", fsi.isReadable(fsi) ? 1 : 0);
-		info.put("write", fsi.isWritable(fsi) ? 1 : 0);
-		info.put("locked", fsi.isLocked(fsi) ? 1 : 0);
+    protected FsItemEx findItem(FsService fsService, String hash)
+            throws IOException {
+        return FsServiceUtils.findItem(fsService, hash);
+    }
 
-		if (fsi.getMimeType().startsWith("image"))
-		{
-			StringBuffer qs = request.getRequestURL();
-			info.put("tmb", qs.append(String.format("?cmd=tmb&target=%s",
-					fsi.getHash())));
-		}
+    protected Map<String, Object> getFsItemInfo(HttpServletRequest request,
+            FsItemEx fsi) throws IOException {
+        Map<String, Object> info = new HashMap<String, Object>();
+        info.put("hash", fsi.getHash());
+        info.put("mime", fsi.getMimeType());
+        info.put("ts", fsi.getLastModified());
+        info.put("size", fsi.getSize());
+        info.put("read", fsi.isReadable(fsi) ? 1 : 0);
+        info.put("write", fsi.isWritable(fsi) ? 1 : 0);
+        info.put("locked", fsi.isLocked(fsi) ? 1 : 0);
 
-		if (fsi.isRoot())
-		{
-			info.put("name", fsi.getVolumnName());
-			info.put("volumeid", fsi.getVolumeId());
-		}
-		else
-		{
-			info.put("name", fsi.getName());
-			info.put("phash", fsi.getParent().getHash());
-		}
-		if (fsi.isFolder())
-		{
-			info.put("dirs", fsi.hasChildFolder() ? 1 : 0);
-		}
-		String url = fsi.getURL();
-		if (url != null)
-		{
-			info.put("url", url);
-		}
+        if (fsi.getMimeType().startsWith("image")) {
+            StringBuffer qs = request.getRequestURL();
+            info.put("tmb", qs.append(String.format("?cmd=tmb&target=%s",
+                    fsi.getHash())));
+        }
 
-		return info;
-	}
+        if (fsi.isRoot()) {
+            info.put("name", fsi.getVolumnName());
+            info.put("volumeid", fsi.getVolumeId());
+            info.put("dirPath", SWBConnectorServlet.basePath + "/");
+        } else {
+            info.put("name", fsi.getName());
+            info.put("phash", fsi.getParent().getHash());
+            info.put("path", SWBConnectorServlet.baseName + fsi.getParent().getPath() + "/" + fsi.getName());
+        }
+        if (fsi.isFolder()) {
+            info.put("dirs", fsi.hasChildFolder() ? 1 : 0);
+        }
+        String url = fsi.getURL();
+        if (url != null) {
+            info.put("url", url);
+        }
 
-	protected String getMimeDisposition(String mime)
-	{
-		String[] parts = mime.split("/");
-		String disp = ("image".equals(parts[0]) || "text".equals(parts[0]) ? "inline"
-				: "attachments");
-		return disp;
-	}
+        return info;
+    }
 
-	protected Map<String, Object> getOptions(HttpServletRequest request,
-			FsItemEx cwd) throws IOException
-	{
-		Map<String, Object> map = new HashMap<String, Object>();
-		map.put("path", cwd.getPath());
-		map.put("disabled", new String[0]);
-		map.put("separator", "/");
-		map.put("copyOverwrite", 1);
-		map.put("archivers", new Object[0]);
-		// Currently we don't support chunked uploads which came in with a newer
-		// version of elfinder 2.1
-		map.put("uploadMaxConn", "-1");
-		// We don't have an implementation of zipdl at the moment.
-		map.put("disabled", Arrays.asList(new String[] { "zipdl" }));
-		String url = cwd.getURL();
-		if (url != null)
-		{
-			map.put("url", url);
-		}
-		cwd.filterOptions(map);
+    protected String getMimeDisposition(String mime) {
+        String[] parts = mime.split("/");
+        String disp = ("image".equals(parts[0]) || "text".equals(parts[0]) ? "inline"
+                : "attachments");
+        return disp;
+    }
 
-		return map;
-	}
+    protected Map<String, Object> getOptions(HttpServletRequest request,
+            FsItemEx cwd) throws IOException {
+        Map<String, Object> map = new HashMap<String, Object>();
+        map.put("path", cwd.getPath());
+        map.put("disabled", new String[0]);
+        map.put("separator", "/");
+        map.put("copyOverwrite", 1);
+        map.put("archivers", new Object[0]);
+        String url = cwd.getURL();
+        if (url != null) {
+            map.put("url", url);
+        }
+
+        return map;
+    }
 }
